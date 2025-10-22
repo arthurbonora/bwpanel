@@ -1,0 +1,108 @@
+#!/bin/bash
+# BWPanel CLI - Instalador Completo
+# Uso: sudo bwpanel-install
+
+INSTALL_DIR="/opt/bwpanel"
+CONFIG_FILE="$INSTALL_DIR/config.conf"
+SCRIPTS=("bwpanel-adduser" "bwpanel-deluser" "bwpanel-help" "bwpanel-version" "bwpanel-update")
+
+echo "============================================="
+echo "🌐 BWPanel CLI - Instalador Completo"
+echo "============================================="
+
+# 1️⃣ Criar diretório principal
+sudo mkdir -p "$INSTALL_DIR"
+sudo chown root:root "$INSTALL_DIR"
+
+# 2️⃣ Criar config.conf inicial se não existir
+if [ ! -f "$CONFIG_FILE" ]; then
+cat > "$CONFIG_FILE" <<EOL
+# BWPanel CLI Configuration
+SITES_PATH="/home/bwpanel/sites"
+TEMPLATE_PATH="/home/bwpanel/templates"
+DB_HOST="localhost"
+DB_USER="bwuser"
+DB_PASS="SENHA_DO_BWUSER"
+DB_NAME="bwpanel"
+NGINX_AVAILABLE="/etc/nginx/sites-available"
+NGINX_ENABLED="/etc/nginx/sites-enabled"
+PHP_FPM_POOL_DIR="/etc/php/8.4/fpm/pool.d"
+BWCLI_VERSION="1.0"
+EOL
+    echo "✅ Arquivo de configuração inicial criado em $CONFIG_FILE"
+else
+    echo "⚠️ Configuração já existente em $CONFIG_FILE. Não sobrescrevendo."
+fi
+
+# 3️⃣ Tornar scripts executáveis e copiar para INSTALL_DIR
+for script in "${SCRIPTS[@]}"; do
+    if [ -f "./$script" ]; then
+        sudo cp "./$script" "$INSTALL_DIR/"
+        sudo chmod +x "$INSTALL_DIR/$script"
+        echo "✅ Script $script instalado."
+    else
+        echo "⚠️ Script $script não encontrado no diretório atual."
+    fi
+done
+
+# 4️⃣ Criar links simbólicos
+for script in "${SCRIPTS[@]}"; do
+    sudo ln -sf "$INSTALL_DIR/$script" /usr/local/bin/$script
+done
+echo "✅ Links simbólicos criados."
+
+# 5️⃣ Criar diretório padrão de sites
+sudo mkdir -p /home/bwpanel/sites
+sudo chown -R www-data:www-data /home/bwpanel/sites
+echo "✅ Diretório padrão de sites criado em /home/bwpanel/sites"
+
+# 6️⃣ Criar banco de dados BWPanel e tabelas iniciais
+echo "🔧 Criando banco de dados e tabelas iniciais..."
+DB_USER="bwuser"
+DB_PASS="SENHA_DO_BWUSER"
+
+mysql -u root -p <<MYSQL_SCRIPT
+CREATE DATABASE IF NOT EXISTS bwpanel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
+GRANT ALL PRIVILEGES ON bwpanel.* TO '${DB_USER}'@'localhost';
+FLUSH PRIVILEGES;
+
+USE bwpanel;
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    client_id INT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS clients (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sites (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    domain VARCHAR(150) NOT NULL UNIQUE,
+    path VARCHAR(255) NOT NULL,
+    user_id INT NOT NULL,
+    db_name VARCHAR(100) NOT NULL,
+    db_user VARCHAR(100) NOT NULL,
+    db_pass VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+MYSQL_SCRIPT
+
+echo "✅ Banco de dados e tabelas criadas."
+
+# 7️⃣ Finalização
+echo ""
+echo "============================================="
+echo "🎉 BWPanel CLI instalado com sucesso!"
+echo "Use: bwpanel-help para ver todos os comandos"
+echo "============================================="
