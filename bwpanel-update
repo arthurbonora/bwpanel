@@ -1,0 +1,51 @@
+#!/bin/bash
+VERSION_LOCAL="1.0.0"
+AUTHOR="Bonora Soluções Web"
+REPO_BASE="https://raw.githubusercontent.com/arthurbonora/bwpanel/main"
+INSTALL_DIR="/opt/bwpanel"
+BACKUP_DIR="/opt/bwpanel/backups"
+
+echo ""
+echo "============================================="
+echo "      🌐 BWPanel CLI - Atualização"
+echo "============================================="
+echo ""
+echo "Autor: $AUTHOR"
+echo "Versão atual: $VERSION_LOCAL"
+echo ""
+
+mkdir -p "$BACKUP_DIR"
+TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
+BACKUP_FILE="$BACKUP_DIR/bwpanel_backup_$TIMESTAMP.tar.gz"
+
+tar -czf "$BACKUP_FILE" "$INSTALL_DIR"/bwpanel-* >/dev/null 2>&1
+
+SCRIPTS=("bwpanel-adduser" "bwpanel-deluser" "bwpanel-help" "bwpanel-version" "bwpanel-update")
+
+echo ""
+echo "⬇️  Baixando scripts atualizados do repositório..."
+for script in "${SCRIPTS[@]}"; do
+    echo "- Atualizando: $script"
+    curl -s -o "$INSTALL_DIR/$script" "$REPO_BASE/bin/$script"
+    if [ $? -eq 0 ]; then chmod +x "$INSTALL_DIR/$script"; fi
+done
+
+chown root:root "$INSTALL_DIR"/bwpanel-* 2>/dev/null
+chmod +x "$INSTALL_DIR"/bwpanel-* 2>/dev/null
+
+LATEST_VERSION=$(curl -s "$REPO_BASE/version.txt" | head -n 1)
+if [ -n "$LATEST_VERSION" ] && [ "$LATEST_VERSION" != "$VERSION_LOCAL" ]; then
+    echo "🚀 Atualização concluída! Nova versão: $LATEST_VERSION"
+else
+    echo "✅ Nenhuma atualização de versão detectada (versão $VERSION_LOCAL)."
+fi
+
+systemctl reload nginx >/dev/null 2>&1
+systemctl restart php8.3-fpm >/dev/null 2>&1
+systemctl restart mariadb >/dev/null 2>&1
+
+echo ""
+echo "============================================="
+echo "BWPanel CLI atualizado com sucesso!"
+echo "============================================="
+echo ""

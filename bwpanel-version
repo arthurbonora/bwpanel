@@ -1,0 +1,45 @@
+#!/bin/bash
+VERSION="1.0.0"
+BUILD_DATE="2025-10-22"
+AUTHOR="Bonora Soluções Web"
+REPO_URL="https://raw.githubusercontent.com/arthurbonora/bwpanel/main/version.txt"
+
+echo ""
+echo "============================================="
+echo "        🌐 BWPanel CLI - Version Info"
+echo "============================================="
+echo ""
+echo "Versão local: $VERSION"
+echo "Compilado em: $BUILD_DATE"
+echo "Autor:        $AUTHOR"
+echo ""
+
+check_update() {
+    echo "🔍 Verificando atualizações no repositório oficial..."
+    LATEST_VERSION=$(curl -s "$REPO_URL" | head -n 1)
+
+    if [ -z "$LATEST_VERSION" ]; then
+        echo "⚠️  Não foi possível verificar a versão online (sem conexão ou repositório offline)."
+    else
+        if [ "$LATEST_VERSION" != "$VERSION" ]; then
+            echo "🚀 Nova versão disponível: $LATEST_VERSION"
+            echo "Atualize com:"
+            echo "  sudo bwpanel-update"
+        else
+            echo "✅ Você já está na versão mais recente."
+        fi
+    fi
+    echo ""
+}
+
+check_update
+
+echo "Sistema:"
+echo "  OS: $(lsb_release -ds 2>/dev/null || echo 'Desconhecido')"
+echo "  Kernel: $(uname -r)"
+echo "  PHP: $(php -v | head -n 1)"
+echo "  MariaDB: $(mariadb --version | head -n 1)"
+echo "  Nginx: $(nginx -v 2>&1 | cut -d'/' -f2)"
+echo ""
+echo "============================================="
+echo ""
