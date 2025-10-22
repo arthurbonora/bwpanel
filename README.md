@@ -2,6 +2,28 @@
 
 CLI oficial para gerenciamento de usuários e sites do **BWPanel**, desenvolvido para ser executado via terminal (Linux).
 
+## ⚠️ Pré-requisitos do Servidor
+
+Antes de rodar o BWPanel, certifique-se de que o servidor possui:
+
+- **Sistema Operacional:** Ubuntu 22.04 LTS ou Debian 12/13
+- **Banco de Dados:** MariaDB 10.6+ ou MySQL 8.x  
+  - Necessário acesso root para criar o banco `bwpanel` durante a instalação
+- **PHP:** Versão 8.4 com as seguintes extensões instaladas:
+  - `php8.4-mysql`
+  - `php8.4-fpm`
+  - `php8.4-mbstring`
+  - `php8.4-xml`
+  - `php8.4-curl`
+  - `php8.4-gd`
+  - `php8.4-zip`
+  - `php8.4-bcmath`
+
+> Observação: Os demais diretórios e usuários do banco (`bwuser`) serão criados automaticamente pelo `bwpanel-install`.
+
+
+
+
 ## 🚀 Instalação
 
 ```bash
