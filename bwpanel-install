@@ -69,15 +69,22 @@ FLUSH PRIVILEGES;
 
 USE bwpanel;
 
+-- =========================
+-- Tabela de Usuários
+-- =========================
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL,
     password VARCHAR(255) NOT NULL,
     client_id INT DEFAULT NULL,
+    package_id INT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- =========================
+-- Tabela de Clientes
+-- =========================
 CREATE TABLE IF NOT EXISTS clients (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -85,6 +92,9 @@ CREATE TABLE IF NOT EXISTS clients (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- =========================
+-- Tabela de Sites
+-- =========================
 CREATE TABLE IF NOT EXISTS sites (
     id INT AUTO_INCREMENT PRIMARY KEY,
     domain VARCHAR(150) NOT NULL UNIQUE,
@@ -95,6 +105,21 @@ CREATE TABLE IF NOT EXISTS sites (
     db_pass VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- =========================
+-- Tabela de Pacotes (Plans)
+-- =========================
+CREATE TABLE IF NOT EXISTS packages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    disk_quota_mb INT DEFAULT 1024,
+    max_domains INT DEFAULT 1,
+    max_databases INT DEFAULT 1,
+    max_email_accounts INT DEFAULT 0,
+    max_ftp_accounts INT DEFAULT 1,
+    max_subdomains INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 MYSQL_SCRIPT
 
