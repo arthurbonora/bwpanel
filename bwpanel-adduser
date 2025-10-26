@@ -1,82 +1,104 @@
 #!/bin/bash
-# BWPanel CLI - Criar novo usuário e site
-# Uso: bwpanel-adduser <usuario> <email> <senha> <dominio>
+# BWPanel CLI - Adicionar novo usuário e site
+# Uso: sudo bwpanel-adduser <usuario> <email> <senha> <dominio> <package>
 
 CONFIG_FILE="/opt/bwpanel/config.conf"
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "Erro: Arquivo de configuração não encontrado em $CONFIG_FILE"
-  exit 1
-fi
 source "$CONFIG_FILE"
 
-USER=$1
+if [ "$#" -lt 5 ]; then
+    echo "Uso: sudo bwpanel-adduser <usuario> <email> <senha> <dominio> <package>"
+    exit 1
+fi
+
+USERNAME=$1
 EMAIL=$2
 PASSWORD=$3
 DOMAIN=$4
+PACKAGE=$5
 
-if [ -z "$USER" ] || [ -z "$EMAIL" ] || [ -z "$PASSWORD" ] || [ -z "$DOMAIN" ]; then
-  echo "Uso: bwpanel-adduser <usuario> <email> <senha> <dominio>"
-  exit 1
-fi
+DB_PASS_REAL=$DB_PASS
 
+SITE_PATH="${SITES_PATH}/${DOMAIN//./_}"
 DB_NAME="db_${DOMAIN//./_}"
 DB_USER="user_${DOMAIN//./_}"
-DB_PASS=$(openssl rand -base64 14)
-SITE_PATH="${SITES_PATH}/${DOMAIN//./_}"
+DB_PASS=$(openssl rand -base64 16)
 
 echo "---------------------------------------------"
 
-# Criar banco e usuário
-mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" <<MYSQL_SCRIPT
-CREATE DATABASE \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
+# 🔹 Verifica se o pacote existe
+PACKAGE_ID=$(mysql -u $DB_USER -p$DB_PASS_REAL -D $DB_NAME --batch --skip-column-names -e "SELECT id FROM packages WHERE name='${PACKAGE}' LIMIT 1;")
+
+if [ -z "$PACKAGE_ID" ]; then
+    echo "❌ Pacote '${PACKAGE}' não encontrado. Crie o pacote primeiro com 'bwpanel-addpackage'."
+    exit 1
+fi
+
+# 🔹 Cria pasta do site
+sudo mkdir -p "$SITE_PATH/public_html"
+sudo mkdir -p "$SITE_PATH/logs"
+sudo chown -R www-data:www-data "$SITE_PATH"
+
+# 🔹 Cria banco e usuário específicos do site
+mysql -u root -p <<MYSQL_SCRIPT
+CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
 GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 MYSQL_SCRIPT
 
-# Criar diretório do site
-mkdir -p "$SITE_PATH/public_html"
-mkdir -p "$SITE_PATH/logs"
+# 🔹 Cria usuário no banco principal
+HASHED_PASS=$(php -r "echo password_hash('$PASSWORD', PASSWORD_DEFAULT);")
 
-# Criar arquivo de exemplo
-echo "<h1>Bem-vindo ao site ${DOMAIN}</h1>" > "$SITE_PATH/public_html/index.php"
+mysql -u $DB_USER -p$DB_PASS_REAL -D $DB_NAME <<MYSQL_SCRIPT
+USE bwpanel;
+INSERT INTO users (username, email, password, package_id, created_at)
+VALUES ('$USERNAME', '$EMAIL', '$HASHED_PASS', '$PACKAGE_ID', NOW());
+MYSQL_SCRIPT
 
-# Criar config nginx
+# 🔹 Cria registro do site
+mysql -u $DB_USER -p$DB_PASS_REAL -D $DB_NAME <<MYSQL_SCRIPT
+USE bwpanel;
+INSERT INTO sites (domain, path, user_id, db_name, db_user, db_pass)
+VALUES ('$DOMAIN', '$SITE_PATH', (SELECT id FROM users WHERE username='$USERNAME'), '$DB_NAME', '$DB_USER', '$DB_PASS');
+MYSQL_SCRIPT
+
+# 🔹 Cria configuração NGINX
 CONF_FILE="${NGINX_AVAILABLE}/${DOMAIN//./_}.conf"
-cat > "$CONF_FILE" <<EOF
+cat > "$CONF_FILE" <<EOL
 server {
-    server_name ${DOMAIN};
-    root ${SITE_PATH}/public_html;
-
+    listen 80;
+    server_name $DOMAIN;
+    root $SITE_PATH/public_html;
     index index.php index.html;
-    access_log ${SITE_PATH}/logs/access.log;
-    error_log ${SITE_PATH}/logs/error.log;
+
+    access_log $SITE_PATH/logs/access.log;
+    error_log $SITE_PATH/logs/error.log;
 
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
-    location ~ \.php\$ {
+    location ~ \.php$ {
         include snippets/fastcgi-php.conf;
         fastcgi_pass unix:/run/php/php8.4-fpm.sock;
     }
+
+    location ~ /\.ht {
+        deny all;
+    }
 }
-EOF
+EOL
 
-ln -sf "$CONF_FILE" "${NGINX_ENABLED}/"
-nginx -t && systemctl reload nginx
+sudo ln -sf "$CONF_FILE" "$NGINX_ENABLED/"
+sudo systemctl reload nginx
 
-# Inserir usuário no banco principal
-mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" <<MYSQL_SCRIPT
-INSERT INTO users (username, email, password, client_id)
-VALUES ('$USER', '$EMAIL', MD5('$PASSWORD'), NULL);
-MYSQL_SCRIPT
-
-echo "Usuário e site criados com sucesso!"
-echo "Usuário BWPanel: $USER"
+echo "---------------------------------------------"
+echo "✅ Usuário e site criados com sucesso!"
+echo "Usuário BWPanel: $USERNAME"
 echo "Domínio: $DOMAIN"
 echo "Caminho do site: $SITE_PATH"
 echo "Banco de dados: $DB_NAME"
 echo "Usuário DB: $DB_USER"
 echo "Senha DB: $DB_PASS"
+echo "Pacote: $PACKAGE"
 echo "---------------------------------------------"
