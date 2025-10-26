@@ -1,6 +1,8 @@
 # 🧰 BWPanel CLI
 
-CLI oficial para gerenciamento de usuários e sites do **BWPanel**, desenvolvido para ser executado via terminal (Linux).
+CLI oficial para gerenciamento de usuários, sites e pacotes de hospedagem do **BWPanel**, desenvolvido para ser executado via terminal (Linux).
+
+---
 
 ## ⚠️ Pré-requisitos do Servidor
 
@@ -19,10 +21,9 @@ Antes de rodar o BWPanel, certifique-se de que o servidor possui:
   - `php8.4-zip`
   - `php8.4-bcmath`
 
-> Observação: Os demais diretórios e usuários do banco (`bwuser`) serão criados automaticamente pelo `bwpanel-install`.
+> Observação: Os diretórios e o usuário do banco (`bwuser`) são criados automaticamente pelo `bwpanel-install`.
 
-
-
+---
 
 ## 🚀 Instalação
 
@@ -35,6 +36,8 @@ cd /opt/bwpanel
 chmod +x bwpanel-*
 ```
 
+---
+
 ## ⚙️ Instalação completa com bwpanel-install
 
 O comando `bwpanel-install` faz tudo de uma vez:
@@ -42,14 +45,14 @@ O comando `bwpanel-install` faz tudo de uma vez:
 - Cria diretório `/opt/bwpanel`  
 - Cria arquivo de configuração `config.conf` inicial  
 - Cria banco de dados principal `bwpanel` e usuário `bwuser`  
-- Cria as tabelas iniciais: `users`, `clients`, `sites`  
+- Cria as tabelas iniciais: `users`, `clients`, `sites`, `packages`  
 - Instala os scripts e cria links simbólicos  
 
 ```bash
 sudo ./bwpanel-install
 ```
 
-Após isso, todos os comandos estarão disponíveis.
+Após isso, todos os comandos estarão disponíveis globalmente no terminal.
 
 ---
 
@@ -57,18 +60,19 @@ Após isso, todos os comandos estarão disponíveis.
 
 | Comando | Descrição |
 |----------|------------|
-| bwpanel-install | Instala BWPanel do zero, cria banco, usuário e tabelas iniciais |
-| bwpanel-adduser <usuario> <email> <senha> <dominio> | Cria novo site e usuário |
-| bwpanel-deluser <usuario> | Remove usuário e site |
-| bwpanel-help | Mostra ajuda e versão atual |
-| bwpanel-version | Mostra versão do BWPanel e checa atualizações |
-| bwpanel-update | Atualiza scripts BWPanel do repositório oficial |
+| `bwpanel-install` | Instala o BWPanel do zero, cria banco, usuário e tabelas iniciais |
+| `bwpanel-adduser <usuario> <email> <senha> <dominio>` | Cria novo usuário e site |
+| `bwpanel-deluser <usuario>` | Remove usuário e todos os recursos associados |
+| `bwpanel-package` | Cria e gerencia **planos de hospedagem (packages)** com limites definidos |
+| `bwpanel-help` | Mostra ajuda e versão atual |
+| `bwpanel-version` | Mostra a versão do BWPanel e verifica atualizações |
+| `bwpanel-update` | Atualiza scripts do repositório oficial |
 
 ---
 
 ## ⚙️ Configuração
 
-O arquivo de configuração principal está em:
+O arquivo principal de configuração está em:
 
 ```bash
 /opt/bwpanel/config.conf
@@ -76,7 +80,7 @@ O arquivo de configuração principal está em:
 
 ### Principais variáveis:
 
-- `SITES_PATH` → Diretório onde os sites serão criados (`/home/bwpanel/sites`)  
+- `SITES_PATH` → Diretório onde os sites são criados (`/home/bwpanel/sites`)  
 - `DB_USER` / `DB_PASS` → Usuário e senha do banco BWPanel  
 - `DB_NAME` → Nome do banco principal (`bwpanel`)  
 - `NGINX_AVAILABLE` / `NGINX_ENABLED` → Diretórios de configuração Nginx  
@@ -86,10 +90,26 @@ O arquivo de configuração principal está em:
 
 ---
 
-## 📦 Estrutura
+## 📦 Packages (Planos de Hospedagem)
+
+O comando `bwpanel-package` permite criar e listar planos com limites personalizados, por exemplo:
+
+```bash
+# Criar um novo pacote
+sudo bwpanel-package create "Basic" --sites=3 --storage=5GB --dbs=3 --emails=10
+
+# Listar pacotes existentes
+sudo bwpanel-package list
+```
+
+Esses pacotes podem ser vinculados aos usuários no momento da criação via `bwpanel-adduser` ou atualizados posteriormente.
+
+---
+
+## 📂 Estrutura de Diretórios
 
 - Sites em `/home/bwpanel/sites`  
-- Logs de acesso e erro dentro de cada pasta do site (`logs/`)  
+- Logs de acesso e erro dentro de cada pasta (`logs/`)  
 - Arquivos públicos em `public_html/`  
 
 ---
