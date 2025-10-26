@@ -90,22 +90,6 @@ O arquivo principal de configuração está em:
 
 ---
 
-## 📦 Packages (Planos de Hospedagem)
-
-O comando `bwpanel-package` permite criar e listar planos com limites personalizados, por exemplo:
-
-```bash
-# Criar um novo pacote
-sudo bwpanel-package create "Basic" --sites=3 --storage=5GB --dbs=3 --emails=10
-
-# Listar pacotes existentes
-sudo bwpanel-package list
-```
-
-Esses pacotes podem ser vinculados aos usuários no momento da criação via `bwpanel-adduser` ou atualizados posteriormente.
-
----
-
 ## 📂 Estrutura de Diretórios
 
 - Sites em `/home/bwpanel/sites`  
