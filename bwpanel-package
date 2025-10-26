@@ -1,0 +1,77 @@
+#!/bin/bash
+# ==========================================================
+# BWPanel - Package Manager
+# Gerencia planos de hospedagem
+# ==========================================================
+# Uso:
+#   bwpanel-package add <nome> <quota_mb> <max_domains> <max_db> <max_emails> <max_ftp> <max_sub>
+#   bwpanel-package list
+#   bwpanel-package assign <usuario> <nome_package>
+# ==========================================================
+
+CONFIG_FILE="/etc/bwpanel/config.conf"
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "Erro: arquivo de configuração não encontrado em $CONFIG_FILE"
+  exit 1
+fi
+
+source "$CONFIG_FILE"
+
+DB_USER="$DB_USER"
+DB_PASS="$DB_PASS"
+DB_NAME="$DB_NAME"
+
+function list_packages() {
+    echo "---------------------------------------------"
+    echo "Pacotes disponíveis:"
+    mysql -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "SELECT id, name, disk_quota_mb, max_domains, max_databases, max_email_accounts, max_ftp_accounts, max_subdomains FROM packages;"
+    echo "---------------------------------------------"
+}
+
+function add_package() {
+    name="$1"
+    quota="$2"
+    domains="$3"
+    dbs="$4"
+    emails="$5"
+    ftp="$6"
+    subs="$7"
+
+    if [ -z "$name" ]; then
+        echo "Uso: bwpanel-package add <nome> <quota_mb> <max_domains> <max_db> <max_emails> <max_ftp> <max_sub>"
+        exit 1
+    fi
+
+    mysql -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "INSERT INTO packages (name, disk_quota_mb, max_domains, max_databases, max_email_accounts, max_ftp_accounts, max_subdomains) VALUES ('$name', $quota, $domains, $dbs, $emails, $ftp, $subs);"
+    echo "Pacote '$name' criado com sucesso!"
+}
+
+function assign_package() {
+    user="$1"
+    pkg_name="$2"
+
+    pkg_id=$(mysql -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -N -B -e "SELECT id FROM packages WHERE name='$pkg_name' LIMIT 1;")
+
+    if [ -z "$pkg_id" ]; then
+        echo "Erro: Pacote '$pkg_name' não encontrado."
+        exit 1
+    fi
+
+    mysql -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" -e "UPDATE users SET package_id=$pkg_id WHERE username='$user';"
+    echo "Pacote '$pkg_name' atribuído ao usuário '$user' com sucesso!"
+}
+
+case "$1" in
+    add)
+        add_package "$2" "$3" "$4" "$5" "$6" "$7"
+        ;;
+    list)
+        list_packages
+        ;;
+    assign)
+        assign_package "$2" "$3"
+        ;;
+    *)
+        echo "Uso: bwpanel-package [add|list|assign]"
+        ;;
+esac
